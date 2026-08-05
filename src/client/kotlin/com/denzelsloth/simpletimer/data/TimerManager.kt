@@ -60,6 +60,10 @@ object TimerManager {
     }
 
     fun setTimerDirect(timer: ActiveTimer) {
+        val previous = timersBySlot[timer.slot]
+        if (previous != null && previous.isMuted) {
+            timer.applyMute(true)
+        }
         timersBySlot[timer.slot] = timer
         clearSoundState(timer.slot)
         savePersisted()
@@ -96,16 +100,23 @@ object TimerManager {
         return true
     }
 
+    fun toggleMute(slot: Int): Boolean? {
+        val timer = timersBySlot[slot] ?: return null
+        val muted = timer.toggleMute()
+        if (muted) clearSoundState(slot)
+        return muted
+    }
+
     fun tick(client: Minecraft) {
         val player = client.player ?: return
         val now = System.currentTimeMillis()
 
         for (timer in timersBySlot.values) {
-            tickWarningSounds(player, timer, now)
+            if (!timer.isMuted) tickWarningSounds(player, timer, now)
 
             if (timer.consumeExpiryNotification()) {
-                player.sendSystemMessage(Component.literal("Timer \"${timer.name}\" is up!"))
-                if (TimerConfig.alarmDurationSeconds > 0 && TimerConfig.volume > 0) {
+                player.sendSystemMessage(Component.literal("Timer \"${timer.displayName()}\" is up!"))
+                if (!timer.isMuted && TimerConfig.alarmDurationSeconds > 0 && TimerConfig.volume > 0) {
                     playAlarmBeep(player)
                     lastAlarmSoundAtMillis[timer.slot] = now
                 }
@@ -125,7 +136,7 @@ object TimerManager {
     private fun tickWarningSounds(player: LocalPlayer, timer: ActiveTimer, now: Long) {
         if (TimerConfig.volume <= 0) {
             if (timer.consumeWarningNotification() && TimerConfig.showWarningMessage) {
-                FullScreenAlert.showWarningAlert("${timer.name} — ${TimerConfig.warningThresholdSeconds}s!")
+                FullScreenAlert.showWarningAlert("${timer.displayName()} — ${TimerConfig.warningThresholdSeconds}s!", timer.baseName())
             }
             return
         }
@@ -133,7 +144,7 @@ object TimerManager {
         val slot = timer.slot
         if (timer.consumeWarningNotification()) {
             if (TimerConfig.showWarningMessage) {
-                FullScreenAlert.showWarningAlert("${timer.name} — ${TimerConfig.warningThresholdSeconds}s!")
+                FullScreenAlert.showWarningAlert("${timer.displayName()} — ${TimerConfig.warningThresholdSeconds}s!", timer.baseName())
             }
             playAlarmBeep(player)
             warningBeepsPlayed[slot] = 1

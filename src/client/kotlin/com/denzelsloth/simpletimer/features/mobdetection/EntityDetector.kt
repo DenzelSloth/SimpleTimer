@@ -14,11 +14,12 @@ import net.minecraft.world.entity.LivingEntity
 object EntityDetector {
     private const val SCAN_INTERVAL_TICKS = 10
     private const val COOLDOWN_MILLIS = 30_000L
-    private const val SPAWN_ALARM_SOUND_INTERVAL_MILLIS = 400L
+    private const val SPAWN_ALARM_SOUND_INTERVAL_MILLIS = 300L
 
     private var tickCounter = 0
     private var spawnAlarmEndsAt = 0L
     private var lastSpawnAlarmSoundAt = 0L
+    private var spawnAlarmTick = false
 
     private val trackedMobs = LinkedHashMap<Int, DetectedMob>()
     private val detectionCooldowns = LinkedHashMap<String, Long>()
@@ -51,13 +52,15 @@ object EntityDetector {
 
     private fun scanEntities(client: Minecraft) {
         val player = client.player ?: return
-        val dimension = client.level!!.dimension().identifier()
+        val level = client.level ?: return
+        val dimension = level.dimension().identifier()
         val now = System.currentTimeMillis()
 
-        for (entity in client.level!!.entitiesForRendering()) {
+        for (entity in level.entitiesForRendering()) {
             if (entity !is LivingEntity) continue
             if (entity == player) continue
             if (!entity.isAlive) continue
+            if (!player.hasLineOfSight(entity)) continue
 
             val name = entity.displayName.string.stripFormatting()
             if (name.isEmpty()) continue
@@ -68,7 +71,10 @@ object EntityDetector {
 
             val watchlistEntry = MobWatchlist.matchedEntry(name) ?: continue
 
-            val cooldownKey = "${watchlistEntry.lowercase()}@$dimension"
+            val grid = TimerConfig.spawnGridSize
+            val gridX = Math.floorDiv(entity.x.toInt(), grid) * grid
+            val gridZ = Math.floorDiv(entity.z.toInt(), grid) * grid
+            val cooldownKey = "${watchlistEntry.lowercase()}@$dimension@$gridX,$gridZ"
             val lastDetection = detectionCooldowns[cooldownKey]
             if (lastDetection != null && now - lastDetection < COOLDOWN_MILLIS) continue
 
@@ -109,7 +115,7 @@ object EntityDetector {
             "[SimpleTimer] Detected \"${mob.watchlistEntry}\"!"
         ))
 
-        FullScreenAlert.showSpawnAlert("${mob.watchlistEntry} SPAWNED!")
+        FullScreenAlert.showSpawnAlert("${mob.watchlistEntry} SPAWNED!", mob.watchlistEntry)
 
         Minecraft.getInstance().gui.setOverlayMessage(
             Component.literal("Mob detected: ${mob.watchlistEntry}"),
@@ -139,6 +145,9 @@ object EntityDetector {
     }
 
     private fun playSpawnAlarmSound(player: LocalPlayer) {
-        player.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), TimerConfig.volumeScale, 1.0f)
+        spawnAlarmTick = !spawnAlarmTick
+        val pitch = if (spawnAlarmTick) 1.8f else 1.4f
+        player.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), TimerConfig.volumeScale, pitch)
+        player.playSound(SoundEvents.NOTE_BLOCK_BIT.value(), TimerConfig.volumeScale * 0.6f, pitch)
     }
 }

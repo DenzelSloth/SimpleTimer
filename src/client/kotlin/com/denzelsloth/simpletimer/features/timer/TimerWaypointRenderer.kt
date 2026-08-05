@@ -12,11 +12,13 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.joml.Matrix4f
 import org.joml.Vector4f
+import kotlin.math.sqrt
 
 object TimerWaypointRenderer {
     private const val COLOR_ACTIVE = 0xFFFFFFFF.toInt()
     private const val COLOR_WARNING = 0xFFFFFF55.toInt()
     private const val COLOR_EXPIRED = 0xFF55FF55.toInt()
+    private const val COLOR_LIVE = 0xFFFF5555.toInt()
     private const val COLOR_BACKGROUND = 0xC0100010.toInt()
     private const val PADDING_X = 3
     private const val PADDING_Y = 2
@@ -68,12 +70,13 @@ object TimerWaypointRenderer {
             val screenX = ((ndcX + 1.0f) * 0.5f * screenWidth).toInt()
             val screenY = ((1.0f - ndcY) * 0.5f * screenHeight).toInt()
 
-            drawLabel(graphics, client, timer, screenX, screenY)
+            drawLabel(graphics, client, timer, screenX, screenY, sqrt(distSq))
         }
     }
 
-    private fun drawLabel(graphics: GuiGraphicsExtractor, client: Minecraft, timer: ActiveTimer, centerX: Int, centerY: Int) {
-        val label = timer.waypointLabel()
+    private fun drawLabel(graphics: GuiGraphicsExtractor, client: Minecraft, timer: ActiveTimer, centerX: Int, centerY: Int, distance: Double) {
+        val distSuffix = if (TimerConfig.waypointShowDistance) "  ${distance.toInt()}m" else ""
+        val label = timer.waypointLabel() + distSuffix
         val textWidth = client.font.width(label)
         val textHeight = client.font.lineHeight
         val scale = TimerConfig.waypointSize
@@ -99,6 +102,7 @@ object TimerWaypointRenderer {
     }
 
     private fun colorFor(timer: ActiveTimer): Int = when {
+        timer.isMarker -> COLOR_LIVE
         timer.isExpired -> COLOR_EXPIRED
         timer.isWarning -> COLOR_WARNING
         else -> COLOR_ACTIVE

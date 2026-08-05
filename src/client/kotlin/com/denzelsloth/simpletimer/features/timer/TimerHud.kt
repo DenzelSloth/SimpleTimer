@@ -20,21 +20,28 @@ object TimerHud {
     private const val COLOR_ACTIVE = 0xFFFFFFFF.toInt()
     private const val COLOR_WARNING = 0xFFFFFF55.toInt()
     private const val COLOR_EXPIRED = 0xFF55FF55.toInt()
+    private const val COLOR_LIVE = 0xFFFF5555.toInt()
     private const val COLOR_LABEL = 0xFFAAAAAA.toInt()
     private const val COLOR_BAR_BACKGROUND = 0xC0100010.toInt()
     private const val COLOR_BAR_ACTIVE = 0x8844AAFF.toInt()
     private const val COLOR_BAR_WARNING = 0x88FFCC33.toInt()
     private const val COLOR_BAR_EXPIRED = 0x8855FF55.toInt()
+    private const val COLOR_BAR_LIVE = 0x88FF4444.toInt()
+    private const val COLOR_MUTED = 0xFFAAAAAA.toInt()
+    private const val COLOR_BAR_MUTED = 0x88666666.toInt()
 
     private const val ROW_HEIGHT_WITH_KEYBINDS = 28
     private const val ROW_HEIGHT_COMPACT = 16
     private const val ROW_PADDING_X = 3
     private const val ROW_PADDING_Y = 4
     private const val MIN_BAR_WIDTH = 90
+    private const val GAP = 8
     private const val HIT_PADDING = 4
     private const val DRAG_THRESHOLD_PX = 3
     private const val DOUBLE_CLICK_MILLIS = 400L
 
+    private var pressed = false
+    private var pressedSlot = -1
     private var dragging = false
     private var dragMoved = false
     private var dragOffsetX = 0
@@ -65,8 +72,9 @@ object TimerHud {
     }
 
     private fun allowMouseRelease(event: MouseButtonEvent): Boolean {
-        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT || !dragging) return true
-        endDrag()
+        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true
+        if (!pressed) return true
+        handleRelease()
         return false
     }
 
@@ -76,14 +84,14 @@ object TimerHud {
 
         val timers = TimerManager.timers()
         if (timers.isEmpty()) {
-            if (dragging) endDrag()
+            if (dragging) handleRelease()
             return
         }
 
         val chatOpen = client.screen is ChatScreen
         if (dragging) {
             if (!chatOpen || !TimerConfig.draggable || !isLeftMouseDown(client)) {
-                endDrag()
+                handleRelease()
             } else {
                 updateDragPosition(client)
             }
@@ -119,17 +127,21 @@ object TimerHud {
 
         if (TimerConfig.showBackground) {
             graphics.fill(0, y, barWidth, bottom, TimerConfig.applyBackgroundOpacity(COLOR_BAR_BACKGROUND))
-            val fraction = if (timer.isExpired) 1.0f else timer.remainingFraction()
+            val fraction = if (timer.isMarker) 1.0f else if (timer.isExpired) 1.0f else timer.remainingFraction()
             val progressWidth = (barWidth * fraction.coerceIn(0f, 1f)).toInt()
             if (progressWidth > 0) {
                 graphics.fill(0, y, progressWidth, bottom, TimerConfig.applyBackgroundOpacity(barColorFor(timer)))
             }
         }
 
-        graphics.text(
-            client.font, formatLine(timer), ROW_PADDING_X, y + ROW_PADDING_Y,
-            TimerConfig.applyTextOpacity(textColorFor(timer)), true
-        )
+        val left = formatLeft(timer)
+        val right = formatRight(timer)
+        val textColor = TimerConfig.applyTextOpacity(textColorFor(timer))
+        val rightX = barWidth - ROW_PADDING_X - client.font.width(right)
+
+        graphics.text(client.font, left, ROW_PADDING_X, y + ROW_PADDING_Y, textColor, true)
+        graphics.text(client.font, right, rightX, y + ROW_PADDING_Y, textColor, true)
+
         if (showKeybinds) {
             graphics.text(
                 client.font, resetHint(timer), ROW_PADDING_X, y + ROW_PADDING_Y + 10,
@@ -144,30 +156,17 @@ object TimerHud {
         val bounds = computeBounds(client) ?: return false
         if (!bounds.contains(mouseX, mouseY)) return false
 
-        val now = System.currentTimeMillis()
-        if (slot > 0 && slot == lastClickSlot && now - lastClickAtMillis <= DOUBLE_CLICK_MILLIS) {
-            lastClickSlot = -1
-            lastClickAtMillis = 0L
-            if (TimerManager.reset(slot)) {
-                val timer = TimerManager.get(slot).orElseThrow()
-                client.gui.setOverlayMessage(
-                    Component.literal("Reset \"${timer.name}\" (slot $slot)"), false
-                )
-            }
-            return true
+        pressed = true
+        pressedSlot = slot
+
+        if (TimerConfig.draggable) {
+            dragging = true
+            dragMoved = false
+            pressHudX = TimerConfig.x
+            pressHudY = TimerConfig.y
+            dragOffsetX = mouseX.toInt() - TimerConfig.x
+            dragOffsetY = mouseY.toInt() - TimerConfig.y
         }
-
-        if (slot > 0) { lastClickSlot = slot; lastClickAtMillis = now }
-        else { lastClickSlot = -1; lastClickAtMillis = 0L }
-
-        if (!TimerConfig.draggable) return true
-
-        dragging = true
-        dragMoved = false
-        pressHudX = TimerConfig.x
-        pressHudY = TimerConfig.y
-        dragOffsetX = mouseX.toInt() - TimerConfig.x
-        dragOffsetY = mouseY.toInt() - TimerConfig.y
         return true
     }
 
@@ -187,14 +186,51 @@ object TimerHud {
         TimerConfig.setPosition(nextX, nextY)
     }
 
-    private fun endDrag() {
-        if (!dragging) return
+    private fun handleRelease() {
+        val wasDragging = dragging
         dragging = false
-        if (!dragMoved) {
-            TimerConfig.setPosition(pressHudX, pressHudY)
+        val slot = pressedSlot
+        pressed = false
+        pressedSlot = -1
+
+        if (wasDragging && dragMoved) {
+            TimerConfig.save()
             return
         }
-        TimerConfig.save()
+
+        if (wasDragging) {
+            TimerConfig.setPosition(pressHudX, pressHudY)
+        }
+
+        if (slot > 0) {
+            handleClick(slot)
+        }
+    }
+
+    private fun handleClick(slot: Int) {
+        val now = System.currentTimeMillis()
+        val client = Minecraft.getInstance()
+
+        if (slot == lastClickSlot && now - lastClickAtMillis <= DOUBLE_CLICK_MILLIS) {
+            lastClickSlot = -1
+            lastClickAtMillis = 0L
+            if (TimerManager.reset(slot)) {
+                val timer = TimerManager.get(slot).orElseThrow()
+                client.gui.setOverlayMessage(
+                    Component.literal("Reset \"${timer.displayName()}\" (slot $slot)"), false
+                )
+            }
+        } else {
+            lastClickSlot = slot
+            lastClickAtMillis = now
+            val muted = TimerManager.toggleMute(slot)
+            if (muted != null) {
+                val timer = TimerManager.get(slot).orElseThrow()
+                client.gui.setOverlayMessage(
+                    Component.literal("${if (muted) "Muted" else "Unmuted"} \"${timer.displayName()}\" (slot $slot)"), false
+                )
+            }
+        }
     }
 
     private fun hitTestSlot(client: Minecraft, mouseX: Double, mouseY: Double): Int {
@@ -234,32 +270,47 @@ object TimerHud {
 
     private fun unscaledContentWidth(client: Minecraft, timers: Collection<ActiveTimer>): Int {
         val showKeybinds = TimerConfig.showKeybinds
-        var width = 0
+        var maxLeft = 0
+        var maxRight = 0
+        var maxHint = 0
         for (timer in timers) {
-            width = maxOf(width, client.font.width(formatLine(timer)))
-            if (showKeybinds) width = maxOf(width, client.font.width(resetHint(timer)))
+            maxLeft = maxOf(maxLeft, client.font.width(formatLeft(timer)))
+            maxRight = maxOf(maxRight, client.font.width(formatRight(timer)))
+            if (showKeybinds) maxHint = maxOf(maxHint, client.font.width(resetHint(timer)))
         }
-        return maxOf(MIN_BAR_WIDTH, width + ROW_PADDING_X * 2)
+        val contentWidth = maxLeft + GAP + maxRight + ROW_PADDING_X * 2
+        return maxOf(MIN_BAR_WIDTH, contentWidth, maxHint + ROW_PADDING_X * 2)
     }
 
     private fun rowHeight(showKeybinds: Boolean): Int =
         if (showKeybinds) ROW_HEIGHT_WITH_KEYBINDS else ROW_HEIGHT_COMPACT
 
-    private fun formatLine(timer: ActiveTimer): String =
-        "[${timer.slot}] ${timer.name}  ${timer.formattedRemaining()}"
+    private fun formatLeft(timer: ActiveTimer): String =
+        "[${timer.slot}] ${timer.displayName()}"
 
-    private fun resetHint(timer: ActiveTimer): String = "Ctrl/Cmd+${timer.slot} reset"
+    private fun formatRight(timer: ActiveTimer): String {
+        val mute = if (timer.isMuted) " [M]" else ""
+        return "${timer.formattedRemaining()}$mute"
+    }
+
+    private fun resetHint(timer: ActiveTimer): String =
+        if (TimerConfig.showClickHints) "Click mute | Double-click reset"
+        else "Ctrl/Cmd+${timer.slot} reset"
 
     private fun textColorFor(timer: ActiveTimer): Int =
-        if (TimerConfig.showBackground) COLOR_ACTIVE else colorFor(timer)
+        if (timer.isMuted) COLOR_MUTED
+        else if (TimerConfig.showBackground) COLOR_ACTIVE
+        else colorFor(timer)
 
     private fun colorFor(timer: ActiveTimer): Int = when {
+        timer.isMarker -> COLOR_LIVE
         timer.isExpired -> COLOR_EXPIRED
         timer.isWarning -> COLOR_WARNING
         else -> COLOR_ACTIVE
     }
 
     private fun barColorFor(timer: ActiveTimer): Int = when {
+        timer.isMarker -> COLOR_BAR_LIVE
         timer.isExpired -> COLOR_BAR_EXPIRED
         timer.isWarning -> COLOR_BAR_WARNING
         else -> COLOR_BAR_ACTIVE

@@ -1,6 +1,7 @@
 package com.denzelsloth.simpletimer.data
 
 import com.denzelsloth.simpletimer.SimpleTimerMod
+import com.denzelsloth.simpletimer.config.TimerConfig
 import com.denzelsloth.simpletimer.utils.FormatUtils
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
@@ -61,55 +62,56 @@ object SpawnTracker {
     }
 
     fun onMobSpawned(watchlistEntry: String, x: Double, y: Double, z: Double, dimension: Identifier) {
-        val key = watchlistEntry.lowercase()
+        val typeKey = watchlistEntry.lowercase()
+        val instKey = instanceKey(typeKey, x, z)
         val now = System.currentTimeMillis()
 
-        // Learn kill-to-spawn interval (respawn cooldown)
-        val kill = lastKills[key]
+        // Learn kill-to-spawn interval (shared per mob type)
+        val kill = lastKills[instKey]
         if (kill != null) {
             val killToSpawn = now - kill.timeMillis
             if (killToSpawn > 1000L) {
-                val previous = killToSpawnIntervals[key]
+                val previous = killToSpawnIntervals[typeKey]
                 if (previous == null) {
-                    killToSpawnIntervals[key] = killToSpawn
+                    killToSpawnIntervals[typeKey] = killToSpawn
                     save()
                     notifyLearnedInterval(watchlistEntry, killToSpawn)
                 } else {
-                    killToSpawnIntervals[key] = (previous + killToSpawn) / 2
+                    killToSpawnIntervals[typeKey] = (previous + killToSpawn) / 2
                     save()
                 }
             }
         }
 
-        // Learn spawn-to-spawn interval (full cycle)
-        val lastSpawn = lastSpawns[key]
+        // Learn spawn-to-spawn interval (shared per mob type)
+        val lastSpawn = lastSpawns[instKey]
         if (lastSpawn != null) {
             val spawnToSpawn = now - lastSpawn
             if (spawnToSpawn > 1000L) {
-                val previous = spawnToSpawnIntervals[key]
-                spawnToSpawnIntervals[key] = if (previous == null) spawnToSpawn else (previous + spawnToSpawn) / 2
+                val previous = spawnToSpawnIntervals[typeKey]
+                spawnToSpawnIntervals[typeKey] = if (previous == null) spawnToSpawn else (previous + spawnToSpawn) / 2
                 save()
             }
         }
-        lastSpawns[key] = now
+        lastSpawns[instKey] = now
 
-        // If we know spawn-to-spawn, start timer immediately for NEXT spawn
-        val cycle = spawnToSpawnIntervals[key]
-        if (cycle != null && cycle > 0) {
-            createSpawnTimer(watchlistEntry, cycle, x, y, z, dimension)
-        }
+        // Show "UP" marker while the mob is alive; countdown starts on kill
+        createMarkerWaypoint(watchlistEntry, x, y, z, dimension)
     }
 
     fun onMobKilled(watchlistEntry: String, x: Double, y: Double, z: Double, dimension: Identifier) {
-        val key = watchlistEntry.lowercase()
-        lastKills[key] = KillRecord(System.currentTimeMillis(), x, y, z, dimension)
+        val typeKey = watchlistEntry.lowercase()
+        val instKey = instanceKey(typeKey, x, z)
+        lastKills[instKey] = KillRecord(System.currentTimeMillis(), x, y, z, dimension)
 
-        // Refine the timer using the more accurate kill-to-spawn interval
-        val killToSpawn = killToSpawnIntervals[key]
-        if (killToSpawn != null && killToSpawn > 0) {
-            createSpawnTimer(watchlistEntry, killToSpawn, x, y, z, dimension)
-        } else if (lastSpawns.containsKey(key)) {
-            notifyNoInterval(watchlistEntry, x, y, z)
+        // Start respawn countdown using the best known interval
+        val interval = killToSpawnIntervals[typeKey] ?: spawnToSpawnIntervals[typeKey]
+        if (interval != null && interval > 0) {
+            createSpawnTimer(watchlistEntry, interval, x, y, z, dimension)
+        } else {
+            if (lastSpawns.keys.any { it.startsWith("$typeKey@") }) {
+                notifyNoInterval(watchlistEntry, x, y, z)
+            }
         }
     }
 
@@ -128,8 +130,8 @@ object SpawnTracker {
         val key = watchlistEntry.lowercase()
         killToSpawnIntervals.remove(key)
         spawnToSpawnIntervals.remove(key)
-        lastKills.remove(key)
-        lastSpawns.remove(key)
+        lastKills.keys.removeAll { it.startsWith("$key@") }
+        lastSpawns.keys.removeAll { it.startsWith("$key@") }
         save()
     }
 
@@ -143,23 +145,55 @@ object SpawnTracker {
 
     private fun createSpawnTimer(name: String, intervalMillis: Long, x: Double, y: Double, z: Double, dimension: Identifier) {
         val seconds = maxOf(1, (intervalMillis / 1000L).toInt())
-        val slot = findAvailableSlot(name) ?: return
+        val displayName = instanceDisplayName(name, x, z)
+        val slot = findAvailableSlot(displayName) ?: return
 
-        val timer = ActiveTimer.createWithWaypoint(name, slot, seconds * 1000L, x, y, z, dimension)
+        val timer = ActiveTimer.createWithWaypoint(displayName, slot, seconds * 1000L, x, y, z, dimension)
         TimerManager.setTimerDirect(timer)
 
         Minecraft.getInstance().player?.sendSystemMessage(Component.literal(
-            "[SimpleTimer] Spawn timer: \"$name\" ~${FormatUtils.formatInterval(intervalMillis)}"
+            "[SimpleTimer] Spawn timer: \"$displayName\" ~${FormatUtils.formatInterval(intervalMillis)}"
         ))
     }
 
-    private fun findAvailableSlot(name: String): Int? {
+    private fun createMarkerWaypoint(name: String, x: Double, y: Double, z: Double, dimension: Identifier) {
+        val displayName = instanceDisplayName(name, x, z)
+        val slot = findAvailableSlot(displayName) ?: return
+
+        val existing = TimerManager.get(slot)
+        if (!existing.isEmpty) {
+            val timer = existing.get()
+            if (timer.name.equals(displayName, ignoreCase = true) && timer.isMarker) return
+        }
+
+        val marker = ActiveTimer.createMarkerWaypoint(displayName, slot, x, y, z, dimension)
+        TimerManager.setTimerDirect(marker)
+    }
+
+    private fun findAvailableSlot(instanceName: String): Int? {
+        var firstEmpty: Int? = null
         for (slot in 1..TimerManager.MAX_TIMERS) {
             val existing = TimerManager.get(slot)
-            if (existing.isEmpty) return slot
-            if (existing.get().name.equals(name, ignoreCase = true)) return slot
+            if (existing.isEmpty) {
+                if (firstEmpty == null) firstEmpty = slot
+            } else if (existing.get().name.equals(instanceName, ignoreCase = true)) {
+                return slot
+            }
         }
-        return null
+        return firstEmpty
+    }
+
+    private fun snapCoord(v: Double): Int {
+        val grid = TimerConfig.spawnGridSize
+        return Math.floorDiv(v.toInt(), grid) * grid
+    }
+
+    private fun instanceKey(typeKey: String, x: Double, z: Double): String {
+        return "$typeKey@${snapCoord(x)},${snapCoord(z)}"
+    }
+
+    private fun instanceDisplayName(name: String, x: Double, z: Double): String {
+        return "$name [${snapCoord(x)}, ${snapCoord(z)}]"
     }
 
     private fun notifyLearnedInterval(name: String, intervalMillis: Long) {

@@ -36,6 +36,9 @@ object TimerConfig {
     const val MAX_WAYPOINT_DISTANCE = 500
     const val MIN_WAYPOINT_HEIGHT = 0.0f
     const val MAX_WAYPOINT_HEIGHT = 5.0f
+    const val DEFAULT_SPAWN_GRID_SIZE = 16
+    const val MIN_SPAWN_GRID_SIZE = 1
+    const val MAX_SPAWN_GRID_SIZE = 64
 
     private val CONFIG_PATH = FabricLoader.getInstance()
         .configDir
@@ -62,6 +65,11 @@ object TimerConfig {
     var waypointHeight: Float = DEFAULT_WAYPOINT_HEIGHT; private set
     var showFullScreenAlert: Boolean = true; private set
     var showWarningMessage: Boolean = true; private set
+    var showSpawnCoords: Boolean = true; private set
+    var waypointShowDistance: Boolean = true; private set
+    var showClickHints: Boolean = true; private set
+    var hotkeyResets: Boolean = true; private set
+    var spawnGridSize: Int = DEFAULT_SPAWN_GRID_SIZE; private set
 
     val volumeScale: Float get() = volume / 100.0f
     val waypointDistanceSq: Double get() = waypointDistance.toDouble() * waypointDistance.toDouble()
@@ -97,6 +105,11 @@ object TimerConfig {
             waypointHeight = properties.parseFloat("waypointHeight", DEFAULT_WAYPOINT_HEIGHT).coerceIn(MIN_WAYPOINT_HEIGHT, MAX_WAYPOINT_HEIGHT)
             showFullScreenAlert = properties.parseBool("showFullScreenAlert", true)
             showWarningMessage = properties.parseBool("showWarningMessage", true)
+            showSpawnCoords = properties.parseBool("showSpawnCoords", true)
+            waypointShowDistance = properties.parseBool("waypointShowDistance", true)
+            showClickHints = properties.parseBool("showClickHints", true)
+            hotkeyResets = properties.parseBool("hotkeyResets", true)
+            spawnGridSize = properties.parseInt("spawnGridSize", DEFAULT_SPAWN_GRID_SIZE).coerceIn(MIN_SPAWN_GRID_SIZE, MAX_SPAWN_GRID_SIZE)
         } catch (e: IOException) {
             SimpleTimerMod.LOGGER.warn("Failed to load config", e)
         }
@@ -125,6 +138,11 @@ object TimerConfig {
         properties.setProperty("waypointHeight", waypointHeight.toString())
         properties.setProperty("showFullScreenAlert", showFullScreenAlert.toString())
         properties.setProperty("showWarningMessage", showWarningMessage.toString())
+        properties.setProperty("showSpawnCoords", showSpawnCoords.toString())
+        properties.setProperty("waypointShowDistance", waypointShowDistance.toString())
+        properties.setProperty("showClickHints", showClickHints.toString())
+        properties.setProperty("hotkeyResets", hotkeyResets.toString())
+        properties.setProperty("spawnGridSize", spawnGridSize.toString())
         try {
             Files.createDirectories(CONFIG_PATH.parent)
             Files.newOutputStream(CONFIG_PATH).use { out ->
@@ -193,6 +211,21 @@ object TimerConfig {
 
     fun setShowWarningMessage(value: Boolean) { showWarningMessage = value; save() }
     fun applyShowWarningMessage(value: Boolean) { showWarningMessage = value }
+
+    fun setShowSpawnCoords(value: Boolean) { showSpawnCoords = value; save() }
+    fun applyShowSpawnCoords(value: Boolean) { showSpawnCoords = value }
+
+    fun setWaypointShowDistance(value: Boolean) { waypointShowDistance = value; save() }
+    fun applyWaypointShowDistance(value: Boolean) { waypointShowDistance = value }
+
+    fun setShowClickHints(value: Boolean) { showClickHints = value; save() }
+    fun applyShowClickHints(value: Boolean) { showClickHints = value }
+
+    fun setHotkeyResets(value: Boolean) { hotkeyResets = value; save() }
+    fun applyHotkeyResets(value: Boolean) { hotkeyResets = value }
+
+    fun setSpawnGridSize(value: Int) { spawnGridSize = value.coerceIn(MIN_SPAWN_GRID_SIZE, MAX_SPAWN_GRID_SIZE); save() }
+    fun applySpawnGridSize(value: Int) { spawnGridSize = value.coerceIn(MIN_SPAWN_GRID_SIZE, MAX_SPAWN_GRID_SIZE) }
 
     fun applyTextOpacity(argb: Int): Int = withOpacity(argb, textOpacity)
     fun applyBackgroundOpacity(argb: Int): Int = withOpacity(argb, backgroundOpacity)

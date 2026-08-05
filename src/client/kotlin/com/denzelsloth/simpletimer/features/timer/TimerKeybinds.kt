@@ -1,6 +1,7 @@
 package com.denzelsloth.simpletimer.features.timer
 
 import com.denzelsloth.simpletimer.SimpleTimerMod
+import com.denzelsloth.simpletimer.config.TimerConfig
 import com.denzelsloth.simpletimer.data.TimerManager
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -37,6 +38,12 @@ object TimerKeybinds {
         TimerManager.tick(client)
 
         if (client.player == null || client.screen != null) return
+        if (!TimerConfig.hotkeyResets) {
+            for (key in RESET_KEYS) {
+                while (key?.consumeClick() == true) { /* drain */ }
+            }
+            return
+        }
 
         if (!client.hasControlDown()) {
             for (key in RESET_KEYS) {
@@ -51,7 +58,7 @@ object TimerKeybinds {
                 if (TimerManager.reset(slot)) {
                     val timer = TimerManager.get(slot).orElseThrow()
                     client.gui.setOverlayMessage(
-                        Component.literal("Reset \"${timer.name}\" (slot $slot)"),
+                        Component.literal("Reset \"${timer.displayName()}\" (slot $slot)"),
                         false
                     )
                 }

@@ -84,6 +84,14 @@ object STimerCommand {
                 TimerConfig.setShowKeybinds(BoolArgumentType.getBool(ctx, "enabled"))
                 ctx.source.sendFeedback(Component.literal("HUD keybinds ${if (TimerConfig.showKeybinds) "shown" else "hidden"}")); 1
             }))
+            .then(literal("showClickHints").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
+                TimerConfig.setShowClickHints(BoolArgumentType.getBool(ctx, "enabled"))
+                ctx.source.sendFeedback(Component.literal("Click hints ${if (TimerConfig.showClickHints) "shown (click/double-click)" else "hidden (Ctrl/Cmd keybinds)"}")); 1
+            }))
+            .then(literal("hotkeyResets").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
+                TimerConfig.setHotkeyResets(BoolArgumentType.getBool(ctx, "enabled"))
+                ctx.source.sendFeedback(Component.literal("Hotkey resets ${if (TimerConfig.hotkeyResets) "enabled" else "disabled"}")); 1
+            }))
             .then(literal("draggable").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
                 TimerConfig.setDraggable(BoolArgumentType.getBool(ctx, "enabled"))
                 ctx.source.sendFeedback(Component.literal("HUD dragging ${if (TimerConfig.draggable) "enabled" else "disabled"}")); 1
@@ -129,7 +137,7 @@ object STimerCommand {
                     "STimer waypoint config: enabled=${TimerConfig.showWaypoints}, distance=${TimerConfig.waypointDistance}" +
                     ", size=${FormatUtils.formatSize(TimerConfig.waypointSize)}, showBackground=${TimerConfig.waypointShowBackground}" +
                     ", textOpacity=${TimerConfig.waypointTextOpacity}%, backgroundOpacity=${TimerConfig.waypointBackgroundOpacity}%" +
-                    ", height=${FormatUtils.formatSize(TimerConfig.waypointHeight)}"
+                    ", height=${FormatUtils.formatSize(TimerConfig.waypointHeight)}, showCoords=${TimerConfig.showSpawnCoords}"
                 )); 1
             }
             .then(literal("enabled").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
@@ -159,6 +167,18 @@ object STimerCommand {
             .then(literal("height").then(argument("blocks", FloatArgumentType.floatArg(TimerConfig.MIN_WAYPOINT_HEIGHT, TimerConfig.MAX_WAYPOINT_HEIGHT)).executes { ctx ->
                 TimerConfig.setWaypointHeight(FloatArgumentType.getFloat(ctx, "blocks"))
                 ctx.source.sendFeedback(Component.literal("Waypoint height set to ${FormatUtils.formatSize(TimerConfig.waypointHeight)} blocks above feet")); 1
+            }))
+            .then(literal("showCoords").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
+                TimerConfig.setShowSpawnCoords(BoolArgumentType.getBool(ctx, "enabled"))
+                ctx.source.sendFeedback(Component.literal("Spawn coordinates ${if (TimerConfig.showSpawnCoords) "shown" else "hidden"}")); 1
+            }))
+            .then(literal("showDistance").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
+                TimerConfig.setWaypointShowDistance(BoolArgumentType.getBool(ctx, "enabled"))
+                ctx.source.sendFeedback(Component.literal("Waypoint distance ${if (TimerConfig.waypointShowDistance) "shown" else "hidden"}")); 1
+            }))
+            .then(literal("spawnGrid").then(argument("blocks", IntegerArgumentType.integer(TimerConfig.MIN_SPAWN_GRID_SIZE, TimerConfig.MAX_SPAWN_GRID_SIZE)).executes { ctx ->
+                TimerConfig.setSpawnGridSize(IntegerArgumentType.getInteger(ctx, "blocks"))
+                ctx.source.sendFeedback(Component.literal("Spawn grid size set to ${TimerConfig.spawnGridSize} blocks (mobs within this range share a timer)")); 1
             }))
 
     // --- Set commands ---

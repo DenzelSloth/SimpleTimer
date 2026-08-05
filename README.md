@@ -13,14 +13,18 @@ A client-side Fabric mod for Minecraft **26.1.2** that provides on-screen countd
 ## Features
 
 - Up to **10** simultaneous timers (one per hotkey slot)
-- Draggable HUD with progress bars and keybind hints
+- **Multi-spawn tracking**: track multiple spawns of the same mob type at different locations simultaneously (e.g. 2 Key Guardians + 1 Corleone)
+- Draggable HUD with aligned name/timer columns and color-coded progress bars
 - 3D waypoint labels at timer/mob positions (visible through walls, up to 500 blocks)
 - Timers persist across restarts using wall-clock time
 - **Mob detection**: watch for named entities (e.g. Hypixel bosses) with partial name matching
 - **Auto spawn tracking**: learns kill-to-spawn and spawn-to-spawn intervals, automatically creates timers
+- **LIVE / countdown / UP cycle**: red "LIVE" while mob is alive, blue countdown after kill, green "UP" when respawn is due
 - **Full-screen alerts**: large colored text for mob spawns (red) and timer warnings (yellow)
+- **Click interactions**: single-click to mute a timer (gray bar), double-click to reset
 - Configurable warning threshold, alarm durations, and volume
-- Sound alerts: bell on timer expiry, pling on mob spawn
+- Two-tone urgent spawn alarm (alternating bell + bit sounds)
+- Muted timers shown with gray bar and `[M]` indicator
 
 ## Commands
 
@@ -57,6 +61,8 @@ Add mob names (partial match supported) — e.g. `/STimer watch add "Key Guardia
 ```
 /STimer config
 /STimer config showKeybinds <true|false>
+/STimer config showClickHints <true|false>
+/STimer config hotkeyResets <true|false>
 /STimer config draggable <true|false>
 /STimer config showBackground <true|false>
 /STimer config size <0.5-3.0>
@@ -73,6 +79,8 @@ Add mob names (partial match supported) — e.g. `/STimer watch add "Key Guardia
 /STimer config waypoint textOpacity <10-100>
 /STimer config waypoint backgroundOpacity <0-100>
 /STimer config waypoint height <0.0-5.0>
+/STimer config waypoint showCoords <true|false>
+/STimer config waypoint spawnGrid <1-64>
 ```
 
 Also available as `/stimer`.
@@ -87,28 +95,40 @@ Also available as `/stimer`.
 /STimer watch add "Boss Corleone"
 /STimer config warningThreshold 15
 /STimer config spawnAlarmDuration 5
+/STimer config showClickHints true
+/STimer config hotkeyResets false
+/STimer config waypoint showCoords false
+/STimer config waypoint spawnGrid 32
 ```
 
 ## Behavior
 
 ### Timers
-- HUD lists active timers with progress bars (draggable with chat open)
-- Double-click a timer in the HUD to reset it
+- HUD lists active timers with left-aligned names and right-aligned countdowns
+- Color-coded bars: blue (active), yellow (warning), green (expired/UP), red (LIVE), gray (muted)
+- **Single-click** a timer in the HUD (chat open) to mute/unmute it
+- **Double-click** a timer to reset it
+- Hotkey (Ctrl/Cmd + slot number) restarts that timer (can be disabled via `hotkeyResets`)
 - When a timer hits the warning threshold: turns yellow + full-screen alert + sound
 - When a timer expires: displays "UP" + bell alarm for configurable duration
-- Hotkey (Ctrl/Cmd + slot number) instantly restarts that timer
 
 ### Mob Detection
 - Scans nearby entities and matches display names against your watchlist (case-insensitive partial match)
-- On detection: chat message + full-screen red alert + repeating pling alarm
+- On detection: chat message + full-screen red alert + urgent two-tone alarm
 - Waypoint placed at the mob's spawn location (doesn't follow the mob)
-- Automatically learns spawn intervals over time and creates countdown timers
+- Supports **multiple spawns** of the same mob type at different locations
+- Coordinates shown in timer names (e.g. `Key Guardian [100, -200]`) — togglable via `showCoords`
+- Duplicate instances auto-numbered when coords hidden (e.g. `Key Guardian (1)`, `Key Guardian (2)`)
 
-### Spawn Tracking
+### Spawn Tracking & Timer Lifecycle
 - Tracks **kill-to-spawn** (respawn cooldown) and **spawn-to-spawn** (full cycle) intervals
-- When a mob spawns: if cycle is known, immediately starts a timer for the next spawn
-- When a mob dies: refines the timer using the more accurate respawn cooldown
+- **LIVE → countdown → UP → LIVE** cycle:
+  1. Mob spawns → timer shows **LIVE** (red bar) with waypoint at spawn location
+  2. Mob killed → timer switches to respawn **countdown** (blue bar)
+  3. Countdown expires → timer shows **UP** (green bar) — mob should be back
+  4. Mob respawns → timer returns to **LIVE** (red bar)
 - Intervals average over time for better accuracy
+- Configurable **spawn grid size** (default 16 blocks) prevents duplicate timers from small coordinate differences
 - All learned data persists to disk
 
 ## Build / Run

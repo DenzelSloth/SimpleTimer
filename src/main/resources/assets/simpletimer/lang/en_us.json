@@ -17,6 +17,10 @@
 	"text.simpletimer.config.category.waypoints": "Waypoints",
 	"text.simpletimer.config.showKeybinds": "Show keybind hints",
 	"text.simpletimer.config.showKeybinds.tooltip": "Show Ctrl/Cmd reset hints under each timer",
+	"text.simpletimer.config.showClickHints": "Show click hints",
+	"text.simpletimer.config.showClickHints.tooltip": "Show click/double-click hints instead of Ctrl/Cmd keybind hints",
+	"text.simpletimer.config.hotkeyResets": "Hotkey resets",
+	"text.simpletimer.config.hotkeyResets.tooltip": "Allow resetting timers with Ctrl/Cmd + number keys",
 	"text.simpletimer.config.draggable": "Draggable HUD",
 	"text.simpletimer.config.draggable.tooltip": "Allow dragging timers while chat is open",
 	"text.simpletimer.config.showBackground": "Show background bar",
@@ -51,6 +55,12 @@
 	"text.simpletimer.config.waypointBackgroundOpacity.tooltip": "Opacity of waypoint label backgrounds (0–100%)",
 	"text.simpletimer.config.waypointHeight": "Waypoint height",
 	"text.simpletimer.config.waypointHeight.tooltip": "How high above your feet the label floats (blocks)",
+	"text.simpletimer.config.waypointShowDistance": "Show waypoint distance",
+	"text.simpletimer.config.waypointShowDistance.tooltip": "Show distance in meters on waypoint labels",
+	"text.simpletimer.config.showSpawnCoords": "Show spawn coordinates",
+	"text.simpletimer.config.showSpawnCoords.tooltip": "Show coordinates [X, Z] in spawn timer names",
+	"text.simpletimer.config.spawnGridSize": "Spawn grid size",
+	"text.simpletimer.config.spawnGridSize.tooltip": "Mobs within this many blocks share the same timer (prevents clones from small coordinate differences)",
 	"text.simpletimer.config.missingCloth.title": "Cloth Config required",
 	"text.simpletimer.config.missingCloth.message": "Install Cloth Config to edit Simple Timer settings here. You can still use /STimer config in chat."
 }

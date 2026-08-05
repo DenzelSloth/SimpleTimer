@@ -2,6 +2,7 @@ package com.denzelsloth.simpletimer.data
 
 import com.denzelsloth.simpletimer.config.TimerConfig
 import net.minecraft.resources.Identifier
+import java.util.regex.Pattern
 
 class ActiveTimer private constructor(
     val name: String,
@@ -15,6 +16,8 @@ class ActiveTimer private constructor(
     endsAtMillis: Long?
 ) {
     companion object {
+        private val COORD_SUFFIX: Pattern = Pattern.compile(" \\[-?\\d+, -?\\d+]$")
+
         fun create(name: String, slot: Int, durationMillis: Long): ActiveTimer =
             ActiveTimer(name, slot, durationMillis, false, 0.0, 0.0, 0.0, null, null)
 
@@ -23,6 +26,12 @@ class ActiveTimer private constructor(
             x: Double, y: Double, z: Double, dimension: Identifier
         ): ActiveTimer =
             ActiveTimer(name, slot, durationMillis, true, x, y, z, dimension, null)
+
+        fun createMarkerWaypoint(
+            name: String, slot: Int,
+            x: Double, y: Double, z: Double, dimension: Identifier
+        ): ActiveTimer =
+            ActiveTimer(name, slot, 1L, true, x, y, z, dimension, System.currentTimeMillis())
 
         fun restore(
             name: String, slot: Int, durationMillis: Long, endsAtMillis: Long,
@@ -61,13 +70,29 @@ class ActiveTimer private constructor(
         }
     }
 
+    fun baseName(): String = COORD_SUFFIX.matcher(name).replaceFirst("")
+
+    fun displayName(): String {
+        if (TimerConfig.showSpawnCoords) return name
+        val base = baseName()
+        val siblings = TimerManager.timers().filter { it.baseName() == base }
+        if (siblings.size <= 1) return base
+        val index = siblings.indexOfFirst { it.slot == slot } + 1
+        return "$base ($index)"
+    }
+
+    val isMarker: Boolean get() = durationMillis <= 1L
+
     fun hasWaypoint(): Boolean = waypoint && waypointDimension != null
 
     val isExpired: Boolean get() = remainingMillis() <= 0L
 
     val isWarning: Boolean get() = !isExpired && remainingMillis() <= TimerConfig.warningThresholdMillis
 
-    val isAlarming: Boolean get() = isExpired && System.currentTimeMillis() < alarmEndsAtMillis
+    var isMuted: Boolean = false
+        private set
+
+    val isAlarming: Boolean get() = isExpired && !isMuted && System.currentTimeMillis() < alarmEndsAtMillis
 
     fun remainingMillis(): Long = maxOf(0L, endsAtMillis - System.currentTimeMillis())
 
@@ -89,6 +114,17 @@ class ActiveTimer private constructor(
         return true
     }
 
+    fun toggleMute(): Boolean {
+        isMuted = !isMuted
+        if (isMuted) alarmEndsAtMillis = 0L
+        return isMuted
+    }
+
+    fun applyMute(muted: Boolean) {
+        isMuted = muted
+        if (muted) alarmEndsAtMillis = 0L
+    }
+
     fun restart() {
         endsAtMillis = System.currentTimeMillis() + durationMillis
         warningNotified = false
@@ -97,6 +133,7 @@ class ActiveTimer private constructor(
     }
 
     fun formattedRemaining(): String {
+        if (isMarker) return "LIVE"
         if (isExpired) return "UP"
         val totalSeconds = (remainingMillis() + 999L) / 1000L
         val hours = totalSeconds / 3600L
@@ -106,5 +143,5 @@ class ActiveTimer private constructor(
         else String.format("%d:%02d", minutes, seconds)
     }
 
-    fun waypointLabel(): String = "$name  ${formattedRemaining()}"
+    fun waypointLabel(): String = "${displayName()}  ${formattedRemaining()}"
 }

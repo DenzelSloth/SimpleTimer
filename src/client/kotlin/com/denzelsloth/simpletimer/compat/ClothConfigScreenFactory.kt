@@ -20,6 +20,16 @@ object ClothConfigScreenFactory {
             .setTooltip(Component.translatable("text.simpletimer.config.showKeybinds.tooltip"))
             .setSaveConsumer { TimerConfig.applyShowKeybinds(it) }
             .build())
+        hud.addEntry(entry.startBooleanToggle(Component.translatable("text.simpletimer.config.showClickHints"), TimerConfig.showClickHints)
+            .setDefaultValue(true)
+            .setTooltip(Component.translatable("text.simpletimer.config.showClickHints.tooltip"))
+            .setSaveConsumer { TimerConfig.applyShowClickHints(it) }
+            .build())
+        hud.addEntry(entry.startBooleanToggle(Component.translatable("text.simpletimer.config.hotkeyResets"), TimerConfig.hotkeyResets)
+            .setDefaultValue(true)
+            .setTooltip(Component.translatable("text.simpletimer.config.hotkeyResets.tooltip"))
+            .setSaveConsumer { TimerConfig.applyHotkeyResets(it) }
+            .build())
         hud.addEntry(entry.startBooleanToggle(Component.translatable("text.simpletimer.config.draggable"), TimerConfig.draggable)
             .setDefaultValue(true)
             .setTooltip(Component.translatable("text.simpletimer.config.draggable.tooltip"))
@@ -114,6 +124,21 @@ object ClothConfigScreenFactory {
             .setMax(TimerConfig.MAX_WAYPOINT_HEIGHT.toDouble())
             .setTooltip(Component.translatable("text.simpletimer.config.waypointHeight.tooltip"))
             .setSaveConsumer { TimerConfig.applyWaypointHeight(it.toFloat()) }
+            .build())
+        waypoints.addEntry(entry.startBooleanToggle(Component.translatable("text.simpletimer.config.waypointShowDistance"), TimerConfig.waypointShowDistance)
+            .setDefaultValue(true)
+            .setTooltip(Component.translatable("text.simpletimer.config.waypointShowDistance.tooltip"))
+            .setSaveConsumer { TimerConfig.applyWaypointShowDistance(it) }
+            .build())
+        waypoints.addEntry(entry.startBooleanToggle(Component.translatable("text.simpletimer.config.showSpawnCoords"), TimerConfig.showSpawnCoords)
+            .setDefaultValue(true)
+            .setTooltip(Component.translatable("text.simpletimer.config.showSpawnCoords.tooltip"))
+            .setSaveConsumer { TimerConfig.applyShowSpawnCoords(it) }
+            .build())
+        waypoints.addEntry(entry.startIntSlider(Component.translatable("text.simpletimer.config.spawnGridSize"), TimerConfig.spawnGridSize, TimerConfig.MIN_SPAWN_GRID_SIZE, TimerConfig.MAX_SPAWN_GRID_SIZE)
+            .setDefaultValue(TimerConfig.DEFAULT_SPAWN_GRID_SIZE)
+            .setTooltip(Component.translatable("text.simpletimer.config.spawnGridSize.tooltip"))
+            .setSaveConsumer { TimerConfig.applySpawnGridSize(it) }
             .build())
 
         return builder.build()
