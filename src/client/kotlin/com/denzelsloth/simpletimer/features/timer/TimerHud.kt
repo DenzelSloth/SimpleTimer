@@ -51,6 +51,11 @@ object TimerHud {
     private var lastClickSlot = -1
     private var lastClickAtMillis = 0L
 
+    private var rightPressed = false
+    private var rightPressedSlot = -1
+    private var lastRightClickSlot = -1
+    private var lastRightClickAtMillis = 0L
+
     fun register() {
         TimerConfig.load()
         HudElementRegistry.attachElementBefore(
@@ -67,15 +72,27 @@ object TimerHud {
     }
 
     private fun allowMouseClick(event: MouseButtonEvent): Boolean {
-        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true
-        return !handleMousePress(event.x(), event.y())
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            return !handleMousePress(event.x(), event.y())
+        }
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            return !handleRightPress(event.x(), event.y())
+        }
+        return true
     }
 
     private fun allowMouseRelease(event: MouseButtonEvent): Boolean {
-        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true
-        if (!pressed) return true
-        handleRelease()
-        return false
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (!pressed) return true
+            handleRelease()
+            return false
+        }
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (!rightPressed) return true
+            handleRightRelease()
+            return false
+        }
+        return true
     }
 
     private fun onRender(graphics: GuiGraphicsExtractor, deltaTracker: DeltaTracker) {
@@ -230,6 +247,41 @@ object TimerHud {
                     Component.literal("${if (muted) "Muted" else "Unmuted"} \"${timer.displayName()}\" (slot $slot)"), false
                 )
             }
+        }
+    }
+
+    private fun handleRightPress(mouseX: Double, mouseY: Double): Boolean {
+        val client = Minecraft.getInstance()
+        val slot = hitTestSlot(client, mouseX, mouseY)
+        if (slot <= 0) return false
+        rightPressed = true
+        rightPressedSlot = slot
+        return true
+    }
+
+    private fun handleRightRelease() {
+        val slot = rightPressedSlot
+        rightPressed = false
+        rightPressedSlot = -1
+        if (slot > 0) handleRightClick(slot)
+    }
+
+    private fun handleRightClick(slot: Int) {
+        val now = System.currentTimeMillis()
+        val client = Minecraft.getInstance()
+
+        if (slot == lastRightClickSlot && now - lastRightClickAtMillis <= DOUBLE_CLICK_MILLIS) {
+            lastRightClickSlot = -1
+            lastRightClickAtMillis = 0L
+            val timer = TimerManager.get(slot).orElse(null)
+            if (timer != null && TimerManager.remove(slot)) {
+                client.gui.setOverlayMessage(
+                    Component.literal("Removed \"${timer.displayName()}\" (slot $slot)"), false
+                )
+            }
+        } else {
+            lastRightClickSlot = slot
+            lastRightClickAtMillis = now
         }
     }
 

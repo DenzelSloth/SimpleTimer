@@ -3,6 +3,7 @@ package com.denzelsloth.simpletimer.features.timer
 import com.denzelsloth.simpletimer.config.TimerConfig
 import com.denzelsloth.simpletimer.data.ActiveTimer
 import com.denzelsloth.simpletimer.data.MobWatchlist
+import com.denzelsloth.simpletimer.data.SpawnTracker
 import com.denzelsloth.simpletimer.data.TimerManager
 import com.denzelsloth.simpletimer.features.mobdetection.EntityDetector
 import com.denzelsloth.simpletimer.utils.FormatUtils
@@ -76,6 +77,12 @@ object STimerCommand {
             .then(literal("list").executes { executeWatchList(it) })
             .then(literal("clear").executes { executeWatchClear(it) })
             .then(literal("alert").executes { executeWatchAlertToggle(it) })
+            .then(literal("intervals")
+                .executes { executeWatchIntervals(it) }
+                .then(literal("clear")
+                    .executes { executeWatchIntervalsClearAll(it) }
+                    .then(argument("name", StringArgumentType.string())
+                        .executes { executeWatchIntervalsClear(it) })))
 
     private fun buildConfigCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
         literal("config")
@@ -127,6 +134,10 @@ object STimerCommand {
             .then(literal("volume").then(argument("percent", IntegerArgumentType.integer(TimerConfig.MIN_VOLUME, TimerConfig.MAX_VOLUME)).executes { ctx ->
                 TimerConfig.setVolume(IntegerArgumentType.getInteger(ctx, "percent"))
                 ctx.source.sendFeedback(Component.literal("Timer volume set to ${TimerConfig.volume}%")); 1
+            }))
+            .then(literal("showWarningMessage").then(argument("enabled", BoolArgumentType.bool()).executes { ctx ->
+                TimerConfig.setShowWarningMessage(BoolArgumentType.getBool(ctx, "enabled"))
+                ctx.source.sendFeedback(Component.literal("Warning message ${if (TimerConfig.showWarningMessage) "shown" else "hidden"}")); 1
             }))
             .then(buildWaypointConfigCommand())
 
@@ -327,6 +338,40 @@ object STimerCommand {
         val newState = !TimerConfig.showFullScreenAlert
         TimerConfig.setShowFullScreenAlert(newState)
         ctx.source.sendFeedback(Component.literal("Full-screen alert ${if (newState) "ON" else "OFF"}"))
+        return 1
+    }
+
+    private fun executeWatchIntervals(ctx: CommandContext<FabricClientCommandSource>): Int {
+        val intervals = SpawnTracker.allLearnedIntervals()
+        if (intervals.isEmpty()) {
+            ctx.source.sendFeedback(Component.literal("No learned spawn intervals yet. Kill and re-encounter mobs to learn their respawn times."))
+        } else {
+            val sb = StringBuilder("Learned spawn intervals (${intervals.size}):")
+            for ((mob, millis) in intervals) {
+                sb.append("\n  - $mob: ${FormatUtils.formatInterval(millis)}")
+            }
+            ctx.source.sendFeedback(Component.literal(sb.toString()))
+        }
+        return 1
+    }
+
+    private fun executeWatchIntervalsClearAll(ctx: CommandContext<FabricClientCommandSource>): Int {
+        val count = SpawnTracker.allLearnedIntervals().size
+        SpawnTracker.clearAll()
+        ctx.source.sendFeedback(Component.literal("Cleared all learned spawn intervals ($count entries)"))
+        return 1
+    }
+
+    private fun executeWatchIntervalsClear(ctx: CommandContext<FabricClientCommandSource>): Int {
+        val name = StringArgumentType.getString(ctx, "name")
+        val had = SpawnTracker.getLearnedInterval(name) != null
+        SpawnTracker.clearInterval(name)
+        if (had) {
+            ctx.source.sendFeedback(Component.literal("Cleared learned interval for \"$name\""))
+        } else {
+            ctx.source.sendError(Component.literal("No learned interval for \"$name\""))
+            return 0
+        }
         return 1
     }
 }

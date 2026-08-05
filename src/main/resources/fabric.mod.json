@@ -8,10 +8,9 @@
 		"DenzelSloth"
 	],
 	"contact": {
-		"sources": "https://github.com/OvandoOr/TimerSpawner"
+		"sources": "https://github.com/DenzelSloth/SimpleTimer"
 	},
 	"license": "MIT",
-	"icon": "assets/simpletimer/icon.png",
 	"environment": "client",
 	"entrypoints": {
 		"main": [

@@ -12,17 +12,22 @@ import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.entity.LivingEntity
 
 object EntityDetector {
-    private const val SCAN_INTERVAL_TICKS = 10
+    private const val MAX_RETRIES = 100
     private const val COOLDOWN_MILLIS = 30_000L
     private const val SPAWN_ALARM_SOUND_INTERVAL_MILLIS = 300L
 
-    private var tickCounter = 0
     private var spawnAlarmEndsAt = 0L
     private var lastSpawnAlarmSoundAt = 0L
     private var spawnAlarmTick = false
 
     private val trackedMobs = LinkedHashMap<Int, DetectedMob>()
     private val detectionCooldowns = LinkedHashMap<String, Long>()
+
+    private val previousEntityIds = mutableSetOf<Int>()
+    private val currentEntityIds = mutableSetOf<Int>()
+
+    private class PendingEntity(val entityId: Int, var retries: Int = 0)
+    private val pendingEntities = LinkedHashMap<Int, PendingEntity>()
 
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { onTick(it) }
@@ -42,52 +47,98 @@ object EntityDetector {
         if (MobWatchlist.isEmpty) return
 
         pruneDeadMobs(client)
-
-        tickCounter++
-        if (tickCounter < SCAN_INTERVAL_TICKS) return
-        tickCounter = 0
-
-        scanEntities(client)
+        updateEntitySets(client)
+        processRetries(client)
     }
 
-    private fun scanEntities(client: Minecraft) {
-        val player = client.player ?: return
+    private fun updateEntitySets(client: Minecraft) {
         val level = client.level ?: return
-        val dimension = level.dimension().identifier()
-        val now = System.currentTimeMillis()
+        val player = client.player ?: return
+
+        previousEntityIds.clear()
+        previousEntityIds.addAll(currentEntityIds)
+        currentEntityIds.clear()
 
         for (entity in level.entitiesForRendering()) {
             if (entity !is LivingEntity) continue
             if (entity == player) continue
             if (!entity.isAlive) continue
-            if (!player.hasLineOfSight(entity)) continue
+            currentEntityIds.add(entity.id)
+        }
+
+        for (entityId in currentEntityIds) {
+            if (previousEntityIds.contains(entityId)) continue
+            if (trackedMobs.containsKey(entityId)) continue
+            if (pendingEntities.containsKey(entityId)) continue
+            pendingEntities[entityId] = PendingEntity(entityId)
+        }
+    }
+
+    private fun processRetries(client: Minecraft) {
+        val player = client.player ?: return
+        val level = client.level ?: return
+        val dimension = level.dimension().identifier()
+        val now = System.currentTimeMillis()
+
+        val iterator = pendingEntities.iterator()
+        while (iterator.hasNext()) {
+            val (_, pending) = iterator.next()
+
+            if (pending.retries >= MAX_RETRIES) {
+                iterator.remove()
+                continue
+            }
+
+            val entity = level.getEntity(pending.entityId) as? LivingEntity
+            if (entity == null || !entity.isAlive) {
+                iterator.remove()
+                continue
+            }
 
             val name = entity.displayName.string.stripFormatting()
-            if (name.isEmpty()) continue
-            if (!MobWatchlist.matches(name)) continue
+            if (name.isEmpty()) {
+                pending.retries++
+                continue
+            }
 
-            val entityId = entity.id
-            if (trackedMobs.containsKey(entityId)) continue
+            if (!MobWatchlist.matches(name)) {
+                iterator.remove()
+                continue
+            }
 
-            val watchlistEntry = MobWatchlist.matchedEntry(name) ?: continue
+            if (!player.hasLineOfSight(entity)) {
+                pending.retries++
+                continue
+            }
+
+            val watchlistEntry = MobWatchlist.matchedEntry(name)
+            if (watchlistEntry == null) {
+                iterator.remove()
+                continue
+            }
 
             val grid = TimerConfig.spawnGridSize
             val gridX = Math.floorDiv(entity.x.toInt(), grid) * grid
             val gridZ = Math.floorDiv(entity.z.toInt(), grid) * grid
             val cooldownKey = "${watchlistEntry.lowercase()}@$dimension@$gridX,$gridZ"
             val lastDetection = detectionCooldowns[cooldownKey]
-            if (lastDetection != null && now - lastDetection < COOLDOWN_MILLIS) continue
+            if (lastDetection != null && now - lastDetection < COOLDOWN_MILLIS) {
+                iterator.remove()
+                continue
+            }
+
+            iterator.remove()
 
             val mob = DetectedMob(
                 name = name,
-                entityId = entityId,
+                entityId = pending.entityId,
                 x = entity.x,
                 y = entity.y,
                 z = entity.z,
                 dimension = dimension,
                 watchlistEntry = watchlistEntry
             )
-            trackedMobs[entityId] = mob
+            trackedMobs[mob.entityId] = mob
             detectionCooldowns[cooldownKey] = now
 
             SpawnTracker.onMobSpawned(watchlistEntry, entity.x, entity.y, entity.z, dimension)

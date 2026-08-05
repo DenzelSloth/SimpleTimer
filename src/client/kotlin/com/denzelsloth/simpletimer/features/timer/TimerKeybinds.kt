@@ -19,10 +19,10 @@ object TimerKeybinds {
     )
 
     private val CATEGORY = KeyMapping.Category.register(SimpleTimerMod.id("timers"))
-    private val RESET_KEYS = Array<KeyMapping?>(TimerManager.MAX_TIMERS) { null }
+    private val RESET_KEYS = Array<KeyMapping?>(TimerManager.MAX_HOTKEY_SLOT) { null }
 
     fun register() {
-        for (i in 0 until TimerManager.MAX_TIMERS) {
+        for (i in 0 until TimerManager.MAX_HOTKEY_SLOT) {
             val slot = i + 1
             RESET_KEYS[i] = KeyMappingHelper.registerKeyMapping(KeyMapping(
                 "key.simpletimer.reset_$slot",

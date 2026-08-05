@@ -63,7 +63,7 @@ object SpawnTracker {
 
     fun onMobSpawned(watchlistEntry: String, x: Double, y: Double, z: Double, dimension: Identifier) {
         val typeKey = watchlistEntry.lowercase()
-        val instKey = instanceKey(typeKey, x, z)
+        val instKey = instanceKey(typeKey, x, z, dimension)
         val now = System.currentTimeMillis()
 
         // Learn kill-to-spawn interval (shared per mob type)
@@ -101,7 +101,7 @@ object SpawnTracker {
 
     fun onMobKilled(watchlistEntry: String, x: Double, y: Double, z: Double, dimension: Identifier) {
         val typeKey = watchlistEntry.lowercase()
-        val instKey = instanceKey(typeKey, x, z)
+        val instKey = instanceKey(typeKey, x, z, dimension)
         lastKills[instKey] = KillRecord(System.currentTimeMillis(), x, y, z, dimension)
 
         // Start respawn countdown using the best known interval
@@ -180,6 +180,11 @@ object SpawnTracker {
                 return slot
             }
         }
+        if (firstEmpty == null) {
+            Minecraft.getInstance().player?.sendSystemMessage(Component.literal(
+                "[SimpleTimer] All ${TimerManager.MAX_TIMERS} timer slots are full — could not create timer for \"$instanceName\""
+            ))
+        }
         return firstEmpty
     }
 
@@ -188,8 +193,8 @@ object SpawnTracker {
         return Math.floorDiv(v.toInt(), grid) * grid
     }
 
-    private fun instanceKey(typeKey: String, x: Double, z: Double): String {
-        return "$typeKey@${snapCoord(x)},${snapCoord(z)}"
+    private fun instanceKey(typeKey: String, x: Double, z: Double, dimension: Identifier): String {
+        return "$typeKey@$dimension@${snapCoord(x)},${snapCoord(z)}"
     }
 
     private fun instanceDisplayName(name: String, x: Double, z: Double): String {

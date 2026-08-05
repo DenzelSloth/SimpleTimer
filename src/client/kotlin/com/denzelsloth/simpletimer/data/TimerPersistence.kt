@@ -23,6 +23,7 @@ object TimerPersistence {
             properties.setProperty("${prefix}slot", timer.slot.toString())
             properties.setProperty("${prefix}durationMillis", timer.durationMillis.toString())
             properties.setProperty("${prefix}endsAtMillis", timer.endsAtMillis.toString())
+            properties.setProperty("${prefix}muted", timer.isMuted.toString())
             properties.setProperty("${prefix}waypoint", timer.hasWaypoint().toString())
             if (timer.hasWaypoint()) {
                 properties.setProperty("${prefix}x", timer.waypointX.toString())
@@ -78,7 +79,10 @@ object TimerPersistence {
                     }
                 }
                 if (name.isBlank() || slot < 1 || slot > TimerManager.MAX_TIMERS || durationMillis < 1L) continue
-                loaded.add(ActiveTimer.restore(name, slot, durationMillis, endsAtMillis, waypoint, x, y, z, dimension))
+                val muted = properties.getProperty("${prefix}muted", "false").toBoolean()
+                val timer = ActiveTimer.restore(name, slot, durationMillis, endsAtMillis, waypoint, x, y, z, dimension)
+                timer.applyMute(muted)
+                loaded.add(timer)
             } catch (_: IllegalArgumentException) {
                 // Skip bad entries
             }

@@ -9,7 +9,8 @@ import net.minecraft.sounds.SoundEvents
 import java.util.*
 
 object TimerManager {
-    const val MAX_TIMERS = 10
+    const val MAX_TIMERS = 999
+    const val MAX_HOTKEY_SLOT = 10
 
     private const val ALARM_SOUND_INTERVAL_MILLIS = 500L
     private const val WARNING_BEEP_COUNT = 2
@@ -41,7 +42,7 @@ object TimerManager {
         setTimer(name, seconds, slot, waypoint = false, player = null)
 
     fun setTimer(name: String, seconds: Int, slot: Int, waypoint: Boolean, player: LocalPlayer?): ActiveTimer {
-        require(slot in 1..MAX_TIMERS) { "Hotkey slot must be between 1 and $MAX_TIMERS" }
+        require(slot in 1..MAX_TIMERS) { "Slot must be between 1 and $MAX_TIMERS" }
         require(seconds >= 1) { "Timer duration must be at least 1 second" }
 
         val timer = if (waypoint && player?.level() != null) {
@@ -81,9 +82,10 @@ object TimerManager {
         val iterator = timersBySlot.entries.iterator()
         while (iterator.hasNext()) {
             val entry = iterator.next()
-            if (entry.value.name.equals(name, ignoreCase = true)) {
+            val timer = entry.value
+            if (timer.name.equals(name, ignoreCase = true) || timer.baseName().equals(name, ignoreCase = true)) {
                 clearSoundState(entry.key)
-                removed.add(entry.value)
+                removed.add(timer)
                 iterator.remove()
             }
         }

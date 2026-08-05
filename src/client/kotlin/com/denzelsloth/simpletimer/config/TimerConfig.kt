@@ -234,12 +234,17 @@ object TimerConfig {
 
     fun summarize(): String = buildString {
         append("showKeybinds=$showKeybinds")
+        append(", showClickHints=$showClickHints")
+        append(", hotkeyResets=$hotkeyResets")
         append(", draggable=$draggable")
         append(", showBackground=$showBackground")
         append(", size=${FormatUtils.formatSize(size)}")
         append(", textOpacity=$textOpacity%")
         append(", backgroundOpacity=$backgroundOpacity%")
+        append(", warningThreshold=${warningThresholdSeconds}s")
+        append(", showWarningMessage=$showWarningMessage")
         append(", alarmDuration=${alarmDurationSeconds}s")
+        append(", spawnAlarmDuration=${spawnAlarmDurationSeconds}s")
         append(", volume=$volume%")
         append(", showWaypoints=$showWaypoints")
         append(", waypointDistance=$waypointDistance")
@@ -248,6 +253,9 @@ object TimerConfig {
         append(", waypointTextOpacity=$waypointTextOpacity%")
         append(", waypointBackgroundOpacity=$waypointBackgroundOpacity%")
         append(", waypointHeight=${FormatUtils.formatSize(waypointHeight)}")
+        append(", waypointShowDistance=$waypointShowDistance")
+        append(", showSpawnCoords=$showSpawnCoords")
+        append(", spawnGridSize=$spawnGridSize")
     }
 
     private fun withOpacity(argb: Int, opacityPercent: Int): Int {
