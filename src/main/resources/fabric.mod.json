@@ -1,0 +1,45 @@
+{
+	"schemaVersion": 1,
+	"id": "simpletimer",
+	"version": "${version}",
+	"name": "Simple Timer",
+	"description": "On-screen countdown timers with hotkey reset and optional world waypoint labels. Supports seconds, minutes, hours. Configurable HUD and waypoints.",
+	"authors": [
+		"DenzelSloth"
+	],
+	"contact": {
+		"sources": "https://github.com/OvandoOr/TimerSpawner"
+	},
+	"license": "MIT",
+	"icon": "assets/simpletimer/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			{
+				"adapter": "kotlin",
+				"value": "com.denzelsloth.simpletimer.SimpleTimerMod"
+			}
+		],
+		"client": [
+			{
+				"adapter": "kotlin",
+				"value": "com.denzelsloth.simpletimer.SimpleTimerClient"
+			}
+		],
+		"modmenu": [
+			"com.denzelsloth.simpletimer.compat.ModMenuIntegration"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"fabric-language-kotlin": ">=1.13.13+kotlin.2.4.10"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"cloth-config2": "*",
+		"cloth-config": "*"
+	}
+}
