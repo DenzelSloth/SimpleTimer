@@ -10,15 +10,18 @@ import net.minecraft.client.player.LocalPlayer
 import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.phys.Vec3
 
 object EntityDetector {
     private const val MAX_RETRIES = 100
+    private const val FULL_SCAN_INTERVAL_TICKS = 20
     private const val COOLDOWN_MILLIS = 30_000L
     private const val SPAWN_ALARM_SOUND_INTERVAL_MILLIS = 300L
 
     private var spawnAlarmEndsAt = 0L
     private var lastSpawnAlarmSoundAt = 0L
     private var spawnAlarmTick = false
+    private var fullScanCounter = 0
 
     private val trackedMobs = LinkedHashMap<Int, DetectedMob>()
     private val detectionCooldowns = LinkedHashMap<String, Long>()
@@ -49,6 +52,12 @@ object EntityDetector {
         pruneDeadMobs(client)
         updateEntitySets(client)
         processRetries(client)
+
+        fullScanCounter++
+        if (fullScanCounter >= FULL_SCAN_INTERVAL_TICKS) {
+            fullScanCounter = 0
+            fullScan(client)
+        }
     }
 
     private fun updateEntitySets(client: Minecraft) {
@@ -70,6 +79,24 @@ object EntityDetector {
             if (previousEntityIds.contains(entityId)) continue
             if (trackedMobs.containsKey(entityId)) continue
             if (pendingEntities.containsKey(entityId)) continue
+            pendingEntities[entityId] = PendingEntity(entityId)
+        }
+    }
+
+    private fun fullScan(client: Minecraft) {
+        val level = client.level ?: return
+
+        for (entityId in currentEntityIds) {
+            if (trackedMobs.containsKey(entityId)) continue
+            if (pendingEntities.containsKey(entityId)) continue
+
+            val entity = level.getEntity(entityId) as? LivingEntity ?: continue
+            if (!entity.isAlive) continue
+
+            val name = entity.displayName.string.stripFormatting()
+            if (name.isEmpty()) continue
+            if (!MobWatchlist.matches(name)) continue
+
             pendingEntities[entityId] = PendingEntity(entityId)
         }
     }
@@ -106,7 +133,7 @@ object EntityDetector {
                 continue
             }
 
-            if (!player.hasLineOfSight(entity)) {
+            if (!canSeeEntity(player, entity)) {
                 pending.retries++
                 continue
             }
@@ -144,6 +171,21 @@ object EntityDetector {
             SpawnTracker.onMobSpawned(watchlistEntry, entity.x, entity.y, entity.z, dimension)
             notifyPlayer(player, mob)
         }
+    }
+
+    private fun canSeeEntity(player: LocalPlayer, target: LivingEntity): Boolean {
+        val eyePos = player.getEyePosition(1.0f)
+        val toEntity = Vec3(
+            target.x - eyePos.x,
+            target.getEyeY() - eyePos.y,
+            target.z - eyePos.z
+        )
+        val distSq = toEntity.lengthSqr()
+        if (distSq > 128.0 * 128.0) return false
+
+        val lookDir = player.lookAngle
+        val dot = toEntity.normalize().dot(lookDir)
+        return dot > 0.0
     }
 
     private fun pruneDeadMobs(client: Minecraft) {

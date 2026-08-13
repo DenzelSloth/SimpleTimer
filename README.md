@@ -17,7 +17,7 @@ A client-side Fabric mod for Minecraft **26.1.2** that provides on-screen countd
 - Draggable HUD with aligned name/timer columns and color-coded progress bars
 - 3D waypoint labels at timer/mob positions (visible through walls, configurable distance up to 500 blocks, default 200)
 - Timers persist across restarts using wall-clock time (including mute state)
-- **Mob detection**: watch for named entities (e.g. Hypixel bosses) with partial name matching and line-of-sight check
+- **Mob detection**: watch for named entities (e.g. Hypixel bosses) with partial name matching and field-of-view check
 - **Auto spawn tracking**: learns kill-to-spawn and spawn-to-spawn intervals, automatically creates timers
 - **LIVE / countdown / UP cycle**: red "LIVE" while mob is alive, blue countdown after kill, green "UP" when respawn is due
 - **Full-screen alerts**: large colored text for mob spawns (red) and timer warnings (yellow), displayed simultaneously for different mobs
@@ -131,8 +131,8 @@ Also available as `/stimer`.
 
 ### Mob Detection
 - Scans nearby entities and matches display names against your watchlist (case-insensitive partial match)
-- Uses entity set differencing with retry queue (SkyHanni-style) for reliable detection
-- Line-of-sight check prevents detection through walls
+- Uses entity set differencing with retry queue (SkyHanni-style) and periodic full scan for reliable detection
+- Field-of-view check: mobs are only detected when in front of you and within 128 blocks (no X-ray through walls or detection behind you)
 - On detection: chat message + full-screen red alert + urgent two-tone alarm
 - Waypoint placed at the mob's spawn location (doesn't follow the mob)
 - Supports **multiple spawns** of the same mob type at different locations (dimension-aware)
