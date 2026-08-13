@@ -9,7 +9,7 @@ object SimpleTimerMod : ModInitializer {
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
 
     override fun onInitialize() {
-        LOGGER.info("Simple Timer loaded")
+        LOGGER.info("Simple Spawn Timer loaded")
     }
 
     fun id(path: String): Identifier = Identifier.fromNamespaceAndPath(MOD_ID, path)

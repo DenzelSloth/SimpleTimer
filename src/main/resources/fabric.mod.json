@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "simpletimer",
 	"version": "${version}",
-	"name": "Simple Timer",
+	"name": "Simple Spawn Timer",
 	"description": "On-screen countdown timers with mob detection, automatic spawn tracking, 3D waypoints, and a draggable HUD. Learns respawn intervals, tracks LIVE/countdown/UP cycles, and alerts you with full-screen warnings and sounds.",
 	"authors": [
 		"DenzelSloth"

@@ -146,7 +146,7 @@ object TimerConfig {
         try {
             Files.createDirectories(CONFIG_PATH.parent)
             Files.newOutputStream(CONFIG_PATH).use { out ->
-                properties.store(out, "Simple Timer HUD config")
+                properties.store(out, "Simple Spawn Timer HUD config")
             }
         } catch (e: IOException) {
             SimpleTimerMod.LOGGER.warn("Failed to save config", e)

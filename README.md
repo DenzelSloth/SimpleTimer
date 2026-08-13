@@ -1,4 +1,4 @@
-# Simple Timer
+# Simple Spawn Timer
 
 A client-side Fabric mod for Minecraft **26.1.2** that provides on-screen countdown timers with hotkey reset, mob detection with automatic spawn tracking, and configurable HUD/waypoint rendering.
 

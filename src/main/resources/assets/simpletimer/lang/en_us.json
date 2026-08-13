@@ -1,5 +1,5 @@
 {
-	"key.category.simpletimer.timers": "Simple Timer",
+	"key.category.simpletimer.timers": "Simple Spawn Timer",
 	"key.simpletimer.reset_1": "Reset Timer 1 (hold Ctrl/Cmd)",
 	"key.simpletimer.reset_2": "Reset Timer 2 (hold Ctrl/Cmd)",
 	"key.simpletimer.reset_3": "Reset Timer 3 (hold Ctrl/Cmd)",
@@ -11,7 +11,7 @@
 	"key.simpletimer.reset_9": "Reset Timer 9 (hold Ctrl/Cmd)",
 	"key.simpletimer.reset_10": "Reset Timer 10 (hold Ctrl/Cmd)",
 
-	"text.simpletimer.config.title": "Simple Timer Config",
+	"text.simpletimer.config.title": "Simple Spawn Timer Config",
 	"text.simpletimer.config.category.hud": "HUD",
 	"text.simpletimer.config.category.sound": "Sound",
 	"text.simpletimer.config.category.waypoints": "Waypoints",
@@ -62,5 +62,5 @@
 	"text.simpletimer.config.spawnGridSize": "Spawn grid size",
 	"text.simpletimer.config.spawnGridSize.tooltip": "Mobs within this many blocks share the same timer (prevents clones from small coordinate differences)",
 	"text.simpletimer.config.missingCloth.title": "Cloth Config required",
-	"text.simpletimer.config.missingCloth.message": "Install Cloth Config to edit Simple Timer settings here. You can still use /STimer config in chat."
+	"text.simpletimer.config.missingCloth.message": "Install Cloth Config to edit Simple Spawn Timer settings here. You can still use /STimer config in chat."
 }

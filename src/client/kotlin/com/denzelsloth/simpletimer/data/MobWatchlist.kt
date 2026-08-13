@@ -37,7 +37,7 @@ object MobWatchlist {
         try {
             Files.createDirectories(PATH.parent)
             Files.newOutputStream(PATH).use { out ->
-                properties.store(out, "Simple Timer mob watchlist")
+                properties.store(out, "Simple Spawn Timer mob watchlist")
             }
         } catch (e: IOException) {
             SimpleTimerMod.LOGGER.warn("Failed to save mob watchlist", e)

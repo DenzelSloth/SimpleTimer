@@ -54,7 +54,7 @@ object SpawnTracker {
         try {
             Files.createDirectories(PATH.parent)
             Files.newOutputStream(PATH).use { out ->
-                properties.store(out, "Simple Timer learned spawn intervals")
+                properties.store(out, "Simple Spawn Timer learned spawn intervals")
             }
         } catch (e: IOException) {
             SimpleTimerMod.LOGGER.warn("Failed to save spawn times", e)

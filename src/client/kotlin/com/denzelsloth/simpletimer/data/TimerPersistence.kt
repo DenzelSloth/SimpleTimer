@@ -36,7 +36,7 @@ object TimerPersistence {
         try {
             Files.createDirectories(PATH.parent)
             Files.newOutputStream(PATH).use { out ->
-                properties.store(out, "Simple Timer active timers (wall-clock)")
+                properties.store(out, "Simple Spawn Timer active timers (wall-clock)")
             }
         } catch (e: IOException) {
             SimpleTimerMod.LOGGER.warn("Failed to save timers", e)
