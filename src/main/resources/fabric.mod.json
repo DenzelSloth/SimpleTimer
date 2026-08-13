@@ -3,7 +3,7 @@
 	"id": "simpletimer",
 	"version": "${version}",
 	"name": "Simple Timer",
-	"description": "On-screen countdown timers with hotkey reset and optional world waypoint labels. Supports seconds, minutes, hours. Configurable HUD and waypoints.",
+	"description": "On-screen countdown timers with mob detection, automatic spawn tracking, 3D waypoints, and a draggable HUD. Learns respawn intervals, tracks LIVE/countdown/UP cycles, and alerts you with full-screen warnings and sounds.",
 	"authors": [
 		"DenzelSloth"
 	],
